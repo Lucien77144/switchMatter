@@ -1,0 +1,25 @@
+{
+  "name": "starter-kit",
+  "version": "1.0.1",
+  "description": "a minimalist starter kit",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "parcel serve src/index.html",
+    "prettify": "prettier --config prettier.config.js --write 'src/**'",
+    "build": "webpack-cli"
+  },
+  "author": "lucien",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/matter-js": "^0.18.2",
+    "eslint": "^8.28.0",
+    "eslint-config-prettier": "^8.5.0",
+    "parcel": "^2.8.0",
+    "prettier": "^2.8.0",
+    "typescript": "^4.9.3"
+  },
+  "dependencies": {
+    "matter-js": "^0.18.0"
+  }
+}
