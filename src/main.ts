@@ -175,20 +175,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const e2 = event.pairs[0].bodyB;
 
     if(!e1.game || !e2.game) return;
-
-    if(e1.game.type === 'life' && e1.game.health < 1) {
-      Composite.remove(engine.world, e1);
-    } else if (e2.game.type === 'life' && e2.game.health < 1) {
-      Composite.remove(engine.world, e2);
-    }
-
     if(e2.game.type === 'player' && e1.game.type === 'life' && e1.game.health > 0) {
       e2.game.health += e1.game.scale; 
       if(e1.game.scale > 0) {
         e1.game.health--;
         playPositiveCollisionSound();
       } else {
-        createLosange(e2.position.x, e2.position.y, violet, {x: .5, y: .5}, 3, 1);
+        setTimeout(() => {
+          const pos = {
+            x: e1.position.x,
+            y: e1.position.y,
+          }
+          createLosange(pos.x, pos.y, violet, {x: .5, y: .5}, 3, 1);
+        }, 50);
         playNegativeCollisionSound();
       }
       scalePlayer(e2);
@@ -198,7 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
         e2.game.health--;
         playPositiveCollisionSound();
       } else {
-        createLosange(e1.position.x, e1.position.y, violet, {x: .5, y: .5}, 3, 1);
+        setTimeout(() => {
+          const pos = {
+            x: e2.position.x,
+            y: e2.position.y,
+          }
+          createLosange(pos.x, pos.y, violet, {x: .5, y: .5}, 3, 1);
+        }, 50);
         playNegativeCollisionSound();
       }
       scalePlayer(e1);
@@ -217,7 +222,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
-    console.log(e1.game.health);
+
+    if(e1.game.type === 'life' && e1.game.health < 1) {
+      Composite.remove(engine.world, e1);
+    } else if (e2.game.type === 'life' && e2.game.health < 1) {
+      Composite.remove(engine.world, e2);
+    }
   });
 
   function scalePlayer(p) {
