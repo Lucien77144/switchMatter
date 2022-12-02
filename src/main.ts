@@ -5,10 +5,11 @@ import 'pathseg'
 import losangeSVG from './svg/losange.svg';
 import vert from './svg/vert.svg';
 import rouge from './svg/rouge.svg';
+import violet from './svg/violet.svg';
 
 const {
   Common,
-  Vertices,
+  Vertices, 
   Vector,
   Svg,
   Events,
@@ -30,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       players: {
           base: 40,
-          big: 60,
-          little: 20,
       },
   };
   let players: {}[] = [];
@@ -49,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     element: app,
     engine: engine,
     options: {
-      wireframes: true,
+      wireframes: false,
       showVelocity: true,
     }
   });
@@ -59,14 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // create two boxes and a ground
 
-  const bw = 2000;
+  const bw = 20000;
   const wallTop = Bodies.rectangle(sizes.x/2+(bw/2), -(bw/2), sizes.x+bw, bw, { isStatic:true, render: { fillStyle: 'transparent' } });
   const wallBottom = Bodies.rectangle(sizes.x/2+(bw/2), sizes.y+(bw/2), sizes.x+bw, bw, { isStatic:true, render: { fillStyle: 'transparent' } });
   const wallLeft = Bodies.rectangle(-(bw/2), sizes.y/2+(bw/2), bw, sizes.y+bw, { isStatic:true, render: { fillStyle: 'transparent' } });
   const wallRight = Bodies.rectangle(sizes.x+(bw/2), sizes.y/2+(bw/2), bw, sizes.y+bw, { isStatic:true, render: { fillStyle: 'transparent' } });
 
   let indexLosanges = 0;
-  const createLosange = (x=500, y=500, type=vert, scale = {x: .4, y: .4}) => {
+  const createLosange = (x=500, y=500, type=vert, scale = {x: .4, y: .4}, action = 4, health=Math.floor(Math.random()*10+1)) => {
     const select = (root: any, selector:any) => {
       return Array.prototype.slice.call(root.querySelectorAll(selector));
     };
@@ -77,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   
     let result;
-    return loadSvg(losangeSVG).then((root) => {
+    loadSvg(losangeSVG).then((root) => {
       const vertexSets = select(root, 'path').map(function(path) {
         return Vertices.scale(
           Svg.pathToVertices(path, 30),
@@ -95,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
           restitution: .25,
           render: {
             sprite: {
-              texture: vert,
+              texture: type,
               xScale: scale.x,
               yScale: scale.y,
             },
@@ -110,14 +109,19 @@ document.addEventListener('DOMContentLoaded', () => {
       result.game = {
         id: indexLosanges,
         type: 'life',
-        scale: 1,
+        scale: action,
+        health: health,
       };
       indexLosanges++;
-      return result;
     });
   }
-  for (let i = 0; i < 10; i++) {
-    createLosange(Math.random()*sizes.x, Math.random()*sizes.y, vert, {x: .4, y: .4});
+  for (let i = 0; i < 4; i++) {
+    const scale = Math.random()*.4+.4;
+    createLosange(Math.random()*sizes.x, Math.random()*sizes.y, vert, {x: scale, y: scale}, Math.random()*3+1);
+  }
+  for (let i = 0; i < 7; i++) {
+    const scale = Math.random()*.4+.3;
+    createLosange(Math.random()*sizes.x, Math.random()*sizes.y, rouge, {x: scale, y: scale}, -3);
   }
 
   engine.gravity.y = 0;
@@ -125,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
   Composite.add(engine.world, [wallBottom, wallTop, wallLeft, wallRight]);
 
   window.addEventListener('gamepadconnected', function(e) {
-
     for (let i = 0; i < 2; i++) {
       const newPlayer = Bodies.circle(
         sizes.x/2,
@@ -140,8 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
       newPlayer.game = {
         id: i,
         type: 'player',
-        health: 10,
+        health: sizes.players.base,
         secure: false,
+        prevScale: 1,
       }
       
       Composite.add(engine.world, [newPlayer]);
@@ -172,39 +176,114 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(!e1.game || !e2.game) return;
 
-    if(e2.game.type === 'player' && e1.game.type === 'life') {
-      console.log(`player${e2.game.id} get ${e1.game.scale} life points`);
-      e2.game.health += e1.game.scale;
-      console.log(e2.game);
-      
-    } else if (e1.game.type === 'player' && e2.game.type === 'life') {
-      console.log(`player${e1.game.id} get ${e2.game.scale} life points`);
+    if(e1.game.type === 'life' && e1.game.health < 1) {
+      Composite.remove(engine.world, e1);
+    } else if (e2.game.type === 'life' && e2.game.health < 1) {
+      Composite.remove(engine.world, e2);
+    }
+
+    if(e2.game.type === 'player' && e1.game.type === 'life' && e1.game.health > 0) {
+      e2.game.health += e1.game.scale; 
+      if(e1.game.scale > 0) {
+        e1.game.health--;
+        playPositiveCollisionSound();
+      } else {
+        createLosange(e2.position.x, e2.position.y, violet, {x: .5, y: .5}, 3, 1);
+        playNegativeCollisionSound();
+      }
+      scalePlayer(e2);
+    } else if (e1.game.type === 'player' && e2.game.type === 'life' && e2.game.health > 0) {
       e1.game.health += e2.game.scale;
+      if(e2.game.scale > 0) {
+        e2.game.health--;
+        playPositiveCollisionSound();
+      } else {
+        createLosange(e1.position.x, e1.position.y, violet, {x: .5, y: .5}, 3, 1);
+        playNegativeCollisionSound();
+      }
+      scalePlayer(e1);
     }
 
     if(e2.game.type === 'player' && e1.game.type === 'player') {
       if(e2.game.health > e1.game.health) {
         if(!e1.game.secure) {
-          e1.game.health = e1.game.health-1;
-          e1.game.secure = true;
-          setTimeout(() => {
-            e1.game.secure = false;
-          }, 1000);
+          e1.game.health = e1.game.health-8;
+          scalePlayer(e1);
         }
       } else if (e2.game.health < e1.game.health) {
         if(!e2.game.secure) {
-          e2.game.health = e2.game.health-1;
-          e2.game.secure = true;
-          setTimeout(() => {
-            e2.game.secure = false;
-          }, 1000);
+          e2.game.health = e2.game.health-8;
+          scalePlayer(e2);
         }
       }
     }
-    e2.circleRadius = e2.game.health * 4;
-    e1.circleRadius = e1.game.health * 4;
-
+    console.log(e1.game.health);
   });
+
+  function scalePlayer(p) {
+    if (p.game.health <= 0) {
+      window.alert('le joueur ' + p.game.id + ' est mort');
+      window.location.reload();
+    }
+
+    p.game.secure = true;
+    setTimeout(() => {
+      p.game.secure = false;
+    }, 1000);
+    
+    Body.scale(p, (1/p.game.prevScale), (1/p.game.prevScale));
+    p.game.prevScale = p.game.health/sizes.players.base;
+    Body.scale(p, p.game.prevScale, p.game.prevScale);
+    Body.setDensity(p, p.game.health/sizes.players.base);
+  }
+
+  
+  const BaseAudioContext = window.AudioContext || window.webkitAudioContext
+  const context = new BaseAudioContext();
+  
+  function playNegativeCollisionSound() {
+    // piano do : 
+    const freq = 261.63;
+    const gain = 0.5;
+    const attack = 0.01;
+    const decay = 0.1;
+    const sustain = 0.5;
+    const release = 0.1;
+
+    const osc = context.createOscillator();
+    const gainNode = context.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(context.destination);
+    osc.frequency.value = freq;
+    gainNode.gain.value = 0;
+    osc.start(0);
+    gainNode.gain.linearRampToValueAtTime(gain, context.currentTime + attack);
+    gainNode.gain.linearRampToValueAtTime(gain * sustain, context.currentTime + attack + decay);
+    gainNode.gain.linearRampToValueAtTime(0, context.currentTime + attack + decay + release);
+    osc.stop(context.currentTime + attack + decay + release);
+  }
+
+  function playPositiveCollisionSound() {
+    // piano la : 
+    const freq = 440;
+    const gain = 0.5;
+    const attack = 0.01;
+    const decay = 0.1;
+    const sustain = 0.5;
+    const release = 0.1;
+
+    const osc = context.createOscillator();
+    const gainNode = context.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(context.destination);
+    osc.frequency.value = freq;
+    gainNode.gain.value = 0;
+    osc.start(0);
+    gainNode.gain.linearRampToValueAtTime(gain, context.currentTime + attack);
+    gainNode.gain.linearRampToValueAtTime(gain * sustain, context.currentTime + attack + decay);
+    gainNode.gain.linearRampToValueAtTime(0, context.currentTime + attack + decay + release);
+    osc.stop(context.currentTime + attack + decay + release);
+  }
 
   // run the engine
   Runner.run(runner, engine)
